@@ -9,8 +9,8 @@
 ##   Copyright (c) Luca Antiga, David Steinman. All rights reserved.
 ##   See LICENCE file for details.
 
-##      This software is distributed WITHOUT ANY WARRANTY; without even 
-##      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+##      This software is distributed WITHOUT ANY WARRANTY; without even
+##      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 ##      PURPOSE.  See the above copyright notices for more information.
 
 from __future__ import absolute_import # NEEDS TO STAY AS TOP LEVEL IMPORT
@@ -73,7 +73,7 @@ class Pype(object):
 
     def SetOutputStreamToNull(self):
         self.OutputStream = NullOutputStream()
-        
+
     def PrintLog(self,logMessage,indent=0):
         '''Prints log messages from pypescript members to the console.
 
@@ -91,7 +91,7 @@ class Pype(object):
         for i in range(indent):
             indentation = indentation + indentUnit
         self.OutputStream.write(indentation + logMessage + '\n')
-        
+
     def PrintError(self,errorMessage):
         ''' Prints error messages from pypescript members to the console then raises a runtime error.
 
@@ -175,14 +175,14 @@ class Pype(object):
         if not arguments:
             return
         self.ScriptList.append([os.path.splitext(os.path.split(scriptSlice[0])[1])[0],scriptSlice[1:]])
-           
+
     def GetCompatibleMember(self,member,script):
         pushedInputMembers = [scriptMember for scriptMember in script.InputMembers if scriptMember.Pushed]
         compatibleOutputMembers = [scriptMember for scriptMember in pushedInputMembers + script.OutputMembers if scriptMember.AutoPipe and (scriptMember.MemberName == member.MemberName) and (scriptMember.MemberType == member.MemberType)]
         if not compatibleOutputMembers:
             return None
         return compatibleOutputMembers[0]
-    
+
     def AutoPipeScriptObject(self,scriptObject):
         self.PrintLog('Automatic piping ' + scriptObject.ScriptName)
         for memberEntry in scriptObject.InputMembers:
@@ -192,7 +192,7 @@ class Pype(object):
                 continue
             if memberEntry.MemberType == 'handle':
                 continue
-           
+
             candidateScriptObjectList = [candidateScriptObject for candidateScriptObject in self.ScriptObjectList if self.GetCompatibleMember(memberEntry,candidateScriptObject)]
             if not candidateScriptObjectList:
                 continue
@@ -237,7 +237,7 @@ class Pype(object):
                 if  (len(splitUpstreamPipedModuleName) > 1):
                     upstreamPipedModuleName = splitUpstreamPipedModuleName[-2]
                     upstreamPipedId = splitUpstreamPipedModuleName[-1]
-                    
+
                 if not upstreamPipedOption:
                     self.PrintError('Error: invalid option piping: '+pipedArgument)
 
@@ -247,13 +247,13 @@ class Pype(object):
                     candidateScriptObjectList = [candidateScriptObject for candidateScriptObject in self.ScriptObjectList if candidateScriptObject.ScriptName == upstreamPipedModuleName]
                     if upstreamPipedId:
                         candidateScriptObjectList = [candidateScriptObject for candidateScriptObject in candidateScriptObjectList if upstreamPipedId == candidateScriptObject.Id]
-                     
+
                 if not candidateScriptObjectList:
                     self.PrintError('Error: invalid option piping: '+pipedArgument)
                     continue
-                    
+
                 pipedScriptObject = candidateScriptObjectList[-1]
-                 
+
                 candidatePipedMembers = [member for member in pipedScriptObject.OutputMembers + pipedScriptObject.InputMembers if upstreamPipedOption == member.OptionName]
 
                 if not candidatePipedMembers:
@@ -261,10 +261,10 @@ class Pype(object):
                     continue
 
                 pipedMember = candidatePipedMembers[0]
-               
+
                 memberEntry.MemberPipe = pipedScriptObject.ScriptName + '-' + str(pipedScriptObject.Id) + '.' + pipedMember.MemberName
                 self.PrintLog(memberName+' = '+memberEntry.MemberPipe,1)
-               
+
     def PipeScriptObject(self,scriptObject):
         for memberEntry in [member for member in scriptObject.InputMembers if member.MemberPipe and not member.MemberValue]:
             pipedScriptName = memberEntry.MemberPipe.split('.')[0].split('-')[0]
@@ -276,7 +276,7 @@ class Pype(object):
             candidatePipedScriptObjects = [candidateScriptObject for candidateScriptObject in previousScriptObjects if (candidateScriptObject.ScriptName == pipedScriptName) and (candidateScriptObject.Id == pipedScriptId)]
             pipedScriptObject = candidatePipedScriptObjects[-1]
             exec ('scriptObject.'+memberEntry.MemberName+'='+'pipedScriptObject.'+pipedMemberName)
-               
+
     def Execute(self):
         try:
             from vmtk import pypes
@@ -295,8 +295,17 @@ class Pype(object):
                 scriptObjectClasses = [x for x in dir(module) if isclass(getattr(module, x)) and issubclass(getattr(module, x), pypes.pypeScript)]
                 scriptObjectClassName = scriptObjectClasses[0]
             except ImportError as e:
-                self.PrintError(str(e))
-                break
+                try:
+                    module = importlib.import_module(scriptName)
+                    # Find the principle class to instantiate the requested action defined inside the requested writerModule script.
+                    # Returns a single member list (containing the principle class name) which satisfies the following criteria:
+                    #   1) is a class defined within the script
+                    #   2) the class is a subclass of pypes.pypescript
+                    scriptObjectClasses = [x for x in dir(module) if isclass(getattr(module, x)) and issubclass(getattr(module, x), pypes.pypeScript)]
+                    scriptObjectClassName = scriptObjectClasses[0]
+                except ImportError as e:
+                    self.PrintError(str(e))
+                    break
             scriptObject = getattr(module, scriptObjectClassName)
             scriptObject = scriptObject()
             scriptArguments = scriptNameAndArguments[1]
@@ -331,14 +340,14 @@ class Pype(object):
             scriptObject.Deallocate()
 
 def PypeRun(arguments):
-  
+
     pipe = Pype()
     pipe.ExitOnError = 0
     pipe.SetArgumentsString(arguments)
     pipe.ParseArguments()
     pipe.Execute()
     return pipe
-  
+
 
 if __name__=='__main__':
     from vmtk import pypes
